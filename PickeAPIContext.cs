@@ -7,9 +7,4 @@ public class PickeAPIContext : DbContext
     }
 
     public DbSet<Picker> Pickers { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        // This will be set via dependency injection
-    }
 }
