@@ -1,98 +1,96 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SharedModels;
-using System.Diagnostics;
-using TheRocksNew.API.Data;
 
-namespace TheRocksNew.API.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class PickerController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class PickersController : ControllerBase
+    private readonly PickeAPIContext _context;
+
+    public PickerController(PickeAPIContext context)
     {
-        private readonly Data.PickerAPIContext dbContext;
+        _context = context;
+    }
 
-        public PickersController(PickerAPIContext dbContext)
+    // GET: api/picker
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Picker>>> GetPickers()
+    {
+        return await _context.Pickers.ToListAsync();
+    }
+
+    // GET: api/picker/5
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Picker>> GetPicker(int id)
+    {
+        var picker = await _context.Pickers.FindAsync(id);
+
+        if (picker == null)
         {
-            this.dbContext = dbContext;
+            return NotFound();
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetPickers()
+        return picker;
+    }
+
+    // POST: api/picker
+    [HttpPost]
+    public async Task<ActionResult<Picker>> PostPicker(Picker picker)
+    {
+        _context.Pickers.Add(picker);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetPicker), new { id = picker.Id }, picker);
+    }
+
+    // PUT: api/picker/5
+    [HttpPut("{id}")]
+    public async Task<IActionResult> PutPicker(int id, Picker picker)
+    {
+        if (id != picker.Id)
         {
-            return Ok(await dbContext.Pickers.ToListAsync());
+            return BadRequest();
         }
 
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetPicker([FromRoute] int id)
-        {
-            var picker = await dbContext.Pickers.FindAsync(id);
-            return picker == null ? NotFound() : Ok(picker);
-        }
-        [HttpPost]
-        public async Task<IActionResult> AddPicker([FromBody] Picker picker)
+        _context.Entry(picker).State = EntityState.Modified;
 
+        try
         {
-            Debug.WriteLine($"Received AddPicker: {System.Text.Json.JsonSerializer.Serialize(picker)} at {DateTime.Now}");
-            if (picker == null || string.IsNullOrWhiteSpace(picker.Name) || string.IsNullOrWhiteSpace(picker.OrchardName) || string.IsNullOrWhiteSpace(picker.PackHouse))
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!PickerExists(id))
             {
-                return BadRequest("Missing required fields");
-            }
-            dbContext.Pickers.Add(picker);
-            await dbContext.SaveChangesAsync();
-            return Ok(picker);
-        }
-        [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdatePicker([FromRoute] int id, [FromBody] Picker updatedPicker)
-        {
-            if (updatedPicker == null)
-                return BadRequest("Picker data is null");
-
-            if (string.IsNullOrWhiteSpace(updatedPicker.Name) || string.IsNullOrWhiteSpace(updatedPicker.OrchardName) || string.IsNullOrWhiteSpace(updatedPicker.PackHouse))
-                return BadRequest("Name, OrchardName, and PackHouse are required");
-
-            var existingPicker = await dbContext.Pickers.FindAsync(id);
-            if (existingPicker == null)
                 return NotFound();
-
-            existingPicker.Name = updatedPicker.Name ?? existingPicker.Name;
-            existingPicker.AppleType = updatedPicker.AppleType;
-            existingPicker.OrchardName = updatedPicker.OrchardName ?? existingPicker.OrchardName;
-            existingPicker.HoursWorked = updatedPicker.HoursWorked;
-            existingPicker.BinRate = updatedPicker.BinRate;
-            existingPicker.PackHouse = updatedPicker.PackHouse ?? existingPicker.PackHouse;
-
-            try
-            {
-                await dbContext.SaveChangesAsync();
-                return Ok(existingPicker);
             }
-            catch (DbUpdateConcurrencyException)
+            else
             {
-                return Conflict("Picker was modified by another user. Please refresh and try again.");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"UpdatePicker error: {ex.Message} - {ex.StackTrace}");
-                return StatusCode(500, "An error occurred while updating the picker");
+                throw;
             }
         }
 
+        return NoContent();
+    }
 
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeletePicker([FromRoute] int id)
+    // DELETE: api/picker/5
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeletePicker(int id)
+    {
+        var picker = await _context.Pickers.FindAsync(id);
+        if (picker == null)
         {
-            var picker = await dbContext.Pickers.FindAsync(id);
-            if (picker == null) return NotFound();
+            return NotFound();
+        }
 
-            dbContext.Pickers.Remove(picker);
-            await dbContext.SaveChangesAsync();
-            return Ok(picker);
-        }
-        [HttpPost("TestPost")]
-        public IActionResult TestPost()
-        {
-            return Ok("POST works");
-        }
+        _context.Pickers.Remove(picker);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    private bool PickerExists(int id)
+    {
+        return _context.Pickers.Any(e => e.Id == id);
     }
 }
