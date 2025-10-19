@@ -20,6 +20,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// ADD THESE TEST ENDPOINTS:
+app.MapGet("/", () => "My-Real-API is running!");
+app.MapGet("/test", () => "Test endpoint works!");
+app.MapGet("/api/test", () => "API test works!");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
