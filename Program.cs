@@ -14,11 +14,11 @@ builder.Services.AddDbContext<PickeAPIContext>(options =>
 var app = builder.Build();
 
 // Add this - automatically run migrations on startup
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<PickeAPIContext>();
-    db.Database.Migrate();
-}
+//using (var scope = app.Services.CreateScope())
+//{
+  //  var db = scope.ServiceProvider.GetRequiredService<PickeAPIContext>();
+    //db.Database.Migrate();
+//}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
