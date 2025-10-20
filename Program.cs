@@ -2,6 +2,21 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+// Convert PostgreSQL URL to standard connection string
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (connectionString.StartsWith("postgresql://"))
+{
+    // Convert from: postgresql://user:password@host:port/database
+    // To: Host=host;Port=port;Database=database;Username=user;Password=password
+    var uri = new Uri(connectionString);
+    var db = uri.AbsolutePath.Trim('/');
+    var user = uri.UserInfo.Split(':')[0];
+    var passwd = uri.UserInfo.Split(':')[1];
+    
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={db};Username={user};Password={passwd};SSL Mode=Require;Trust Server Certificate=true";
+}
+
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
