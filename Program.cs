@@ -7,21 +7,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database (using in-memory for now)
+// PostgreSQL Database - PROPER connection string handling
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<PickeAPIContext>(options =>
-    options.UseInMemoryDatabase("PickerDB"));
+    options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 
-// Add test endpoints FIRST
+// Test endpoints to verify API is working
 app.MapGet("/", () => "API Root - Working!");
 app.MapGet("/test", () => "Test endpoint - Working!");
-app.MapGet("/api/test", () => "API Test - Working!");
 
-// Then map controllers
 app.MapControllers();
 
-// Development features
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
