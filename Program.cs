@@ -2,24 +2,22 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add logging
-builder.Services.AddLogging();
-
-// Services
+// Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// PostgreSQL Database
+// Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-Console.WriteLine($"🔍 Connection string present: {!string.IsNullOrEmpty(connectionString)}");
+Console.WriteLine("🚀 DATABASE SETUP: Starting application...");
+Console.WriteLine($"🔌 Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
 
 builder.Services.AddDbContext<PickeAPIContext>(options =>
     options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 
-// ✅ OPTION 2: DATABASE SETUP CODE - Replace your current migration code with this
+// 🆕 NEW DATABASE CREATION CODE - REPLACES MIGRATIONS
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -27,66 +25,63 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
-        logger.LogInformation("🔄 Setting up database...");
-        
+        logger.LogInformation("🆕 CREATING DATABASE TABLES...");
         var dbContext = services.GetRequiredService<PickeAPIContext>();
         
-        // Ensure database is created and tables are built
-        await dbContext.Database.EnsureCreatedAsync();
-        logger.LogInformation("✅ Database tables ensured!");
+        // This will create the database and tables if they don't exist
+        var created = await dbContext.Database.EnsureCreatedAsync();
+        logger.LogInformation($"✅ DATABASE CREATION: {(created ? "TABLES CREATED" : "TABLES ALREADY EXIST")}");
         
-        // Test if we can query the Pickers table
+        // Test the Picker table
         var pickerCount = await dbContext.Pickers.CountAsync();
-        logger.LogInformation($"📊 Current Pickers in database: {pickerCount}");
+        logger.LogInformation($"📊 Picker table test: {pickerCount} records found");
         
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Database setup failed");
+        logger.LogError(ex, "❌ DATABASE CREATION FAILED");
     }
 }
 
 // Test endpoints
 app.MapGet("/", () => "API Root - Working!");
 app.MapGet("/test", () => "Test endpoint - Working!");
+
 app.MapGet("/db-test", async (PickeAPIContext dbContext) => 
 {
     try 
     {
         var canConnect = await dbContext.Database.CanConnectAsync();
-        return $"Database test: {(canConnect ? "✅ CONNECTED" : "❌ FAILED")}";
+        return $"Database connection: {(canConnect ? "✅ WORKING" : "❌ FAILED")}";
     }
     catch (Exception ex)
     {
-        return $"Database test: ❌ ERROR - {ex.Message}";
+        return $"Database error: {ex.Message}";
     }
 });
 
-// Add this test endpoint too
-app.MapGet("/test-picker", async (PickeAPIContext dbContext) => 
+app.MapGet("/create-test", async (PickeAPIContext dbContext) => 
 {
     try 
     {
-        // Try to create and read a test picker
         var testPicker = new Picker 
         { 
-            Name = "Test Picker", 
-            AppleType = "Apple Type",
+            Name = "Test Picker " + DateTime.Now.Ticks, 
             OrchardName = "Test Orchard",
-            HoursWorked = "hours worked",
-            BinRate = "bin rate",
-            PackHouse = "Test PackHouse"
+            PackHouse = "Test House",
+            HoursWorked = 8.0m,  // ✅ FIXED: Using decimal value instead of string
+            BinRate = 15.5m      // ✅ FIXED: Using decimal value instead of string
         };
         
         dbContext.Pickers.Add(testPicker);
         await dbContext.SaveChangesAsync();
         
-        var pickers = await dbContext.Pickers.ToListAsync();
-        return $"✅ Database working! Pickers count: {pickers.Count}";
+        var count = await dbContext.Pickers.CountAsync();
+        return $"✅ SUCCESS! Created test picker. Total pickers: {count}";
     }
     catch (Exception ex)
     {
-        return $"❌ Database error: {ex.Message}";
+        return $"❌ FAILED: {ex.Message}";
     }
 });
 
