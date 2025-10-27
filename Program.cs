@@ -14,21 +14,12 @@ builder.Services.AddSwaggerGen();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 Console.WriteLine($"🔍 Connection string present: {!string.IsNullOrEmpty(connectionString)}");
 
-if (string.IsNullOrEmpty(connectionString))
-{
-    Console.WriteLine("❌ CONNECTION STRING IS NULL OR EMPTY!");
-}
-else
-{
-    Console.WriteLine($"🔍 Connection string starts with: {connectionString.Substring(0, Math.Min(20, connectionString.Length))}...");
-}
-
 builder.Services.AddDbContext<PickeAPIContext>(options =>
     options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 
-// ✅ ENHANCED AUTO-MIGRATION CODE WITH BETTER LOGGING
+// ✅ OPTION 2: DATABASE SETUP CODE - Replace your current migration code with this
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -36,48 +27,22 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
-        logger.LogInformation("🔄 Starting database migration process...");
+        logger.LogInformation("🔄 Setting up database...");
         
         var dbContext = services.GetRequiredService<PickeAPIContext>();
         
-        // Test connection first
-        logger.LogInformation("🔌 Testing database connection...");
-        var canConnect = await dbContext.Database.CanConnectAsync();
-        logger.LogInformation($"📊 Database connection test: {canConnect}");
+        // Ensure database is created and tables are built
+        await dbContext.Database.EnsureCreatedAsync();
+        logger.LogInformation("✅ Database tables ensured!");
         
-        if (!canConnect)
-        {
-            logger.LogError("❌ Cannot connect to database. Check connection string.");
-            // Don't proceed with migrations if we can't connect
-        }
-        else
-        {
-            // Check migrations
-            var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
-            var appliedMigrations = await dbContext.Database.GetAppliedMigrationsAsync();
-            
-            logger.LogInformation($"📦 Applied migrations: {appliedMigrations.Count()}");
-            logger.LogInformation($"📦 Pending migrations: {pendingMigrations.Count()}");
-            
-            if (pendingMigrations.Any())
-            {
-                logger.LogInformation($"🔄 Applying {pendingMigrations.Count()} migrations...");
-                foreach (var migration in pendingMigrations)
-                {
-                    logger.LogInformation($"📋 Would apply: {migration}");
-                }
-                await dbContext.Database.MigrateAsync();
-                logger.LogInformation("✅ Database migrations completed successfully!");
-            }
-            else
-            {
-                logger.LogInformation("ℹ️ No pending migrations found.");
-            }
-        }
+        // Test if we can query the Pickers table
+        var pickerCount = await dbContext.Pickers.CountAsync();
+        logger.LogInformation($"📊 Current Pickers in database: {pickerCount}");
+        
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ MIGRATION FAILED: An error occurred during database migration");
+        logger.LogError(ex, "❌ Database setup failed");
     }
 }
 
@@ -94,6 +59,34 @@ app.MapGet("/db-test", async (PickeAPIContext dbContext) =>
     catch (Exception ex)
     {
         return $"Database test: ❌ ERROR - {ex.Message}";
+    }
+});
+
+// Add this test endpoint too
+app.MapGet("/test-picker", async (PickeAPIContext dbContext) => 
+{
+    try 
+    {
+        // Try to create and read a test picker
+        var testPicker = new Picker 
+        { 
+            Name = "Test Picker", 
+            AppleType = "Apple Type",
+            OrchardName = "Test Orchard",
+            HoursWorked = "hours worked",
+            BinRate = "bin rate",
+            PackHouse = "Test PackHouse"
+        };
+        
+        dbContext.Pickers.Add(testPicker);
+        await dbContext.SaveChangesAsync();
+        
+        var pickers = await dbContext.Pickers.ToListAsync();
+        return $"✅ Database working! Pickers count: {pickers.Count}";
+    }
+    catch (Exception ex)
+    {
+        return $"❌ Database error: {ex.Message}";
     }
 });
 
