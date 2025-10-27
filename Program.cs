@@ -12,7 +12,17 @@ builder.Services.AddSwaggerGen();
 
 // PostgreSQL Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-Console.WriteLine($"🔍 Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
+Console.WriteLine($"🔍 Connection string present: {!string.IsNullOrEmpty(connectionString)}");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    Console.WriteLine("❌ CONNECTION STRING IS NULL OR EMPTY!");
+}
+else
+{
+    Console.WriteLine($"🔍 Connection string starts with: {connectionString.Substring(0, Math.Min(20, connectionString.Length))}...");
+}
+
 builder.Services.AddDbContext<PickeAPIContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -35,26 +45,34 @@ using (var scope = app.Services.CreateScope())
         var canConnect = await dbContext.Database.CanConnectAsync();
         logger.LogInformation($"📊 Database connection test: {canConnect}");
         
-        // Check migrations
-        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
-        var appliedMigrations = await dbContext.Database.GetAppliedMigrationsAsync();
-        
-        logger.LogInformation($"📦 Applied migrations: {appliedMigrations.Count()}");
-        logger.LogInformation($"📦 Pending migrations: {pendingMigrations.Count()}");
-        
-        if (pendingMigrations.Any())
+        if (!canConnect)
         {
-            logger.LogInformation($"🔄 Applying {pendingMigrations.Count()} migrations...");
-            foreach (var migration in pendingMigrations)
-            {
-                logger.LogInformation($"📋 Would apply: {migration}");
-            }
-            await dbContext.Database.MigrateAsync();
-            logger.LogInformation("✅ Database migrations completed successfully!");
+            logger.LogError("❌ Cannot connect to database. Check connection string.");
+            // Don't proceed with migrations if we can't connect
         }
         else
         {
-            logger.LogInformation("ℹ️ No pending migrations found.");
+            // Check migrations
+            var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+            var appliedMigrations = await dbContext.Database.GetAppliedMigrationsAsync();
+            
+            logger.LogInformation($"📦 Applied migrations: {appliedMigrations.Count()}");
+            logger.LogInformation($"📦 Pending migrations: {pendingMigrations.Count()}");
+            
+            if (pendingMigrations.Any())
+            {
+                logger.LogInformation($"🔄 Applying {pendingMigrations.Count()} migrations...");
+                foreach (var migration in pendingMigrations)
+                {
+                    logger.LogInformation($"📋 Would apply: {migration}");
+                }
+                await dbContext.Database.MigrateAsync();
+                logger.LogInformation("✅ Database migrations completed successfully!");
+            }
+            else
+            {
+                logger.LogInformation("ℹ️ No pending migrations found.");
+            }
         }
     }
     catch (Exception ex)
