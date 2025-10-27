@@ -2,53 +2,82 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add logging
+builder.Services.AddLogging();
+
 // Services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// PostgreSQL Database - PROPER connection string handling
+// PostgreSQL Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+Console.WriteLine($"🔍 Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
 builder.Services.AddDbContext<PickeAPIContext>(options =>
     options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 
-// ✅ ADD AUTO-MIGRATION CODE HERE
+// ✅ ENHANCED AUTO-MIGRATION CODE WITH BETTER LOGGING
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
     try
     {
+        logger.LogInformation("🔄 Starting database migration process...");
+        
         var dbContext = services.GetRequiredService<PickeAPIContext>();
         
-        // Check for pending migrations
-        var pendingMigrations = dbContext.Database.GetPendingMigrations();
+        // Test connection first
+        logger.LogInformation("🔌 Testing database connection...");
+        var canConnect = await dbContext.Database.CanConnectAsync();
+        logger.LogInformation($"📊 Database connection test: {canConnect}");
+        
+        // Check migrations
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+        var appliedMigrations = await dbContext.Database.GetAppliedMigrationsAsync();
+        
+        logger.LogInformation($"📦 Applied migrations: {appliedMigrations.Count()}");
+        logger.LogInformation($"📦 Pending migrations: {pendingMigrations.Count()}");
+        
         if (pendingMigrations.Any())
         {
-            Console.WriteLine($"Applying {pendingMigrations.Count()} pending migrations...");
-            dbContext.Database.Migrate();
-            Console.WriteLine("Database migrations applied successfully!");
+            logger.LogInformation($"🔄 Applying {pendingMigrations.Count()} migrations...");
+            foreach (var migration in pendingMigrations)
+            {
+                logger.LogInformation($"📋 Would apply: {migration}");
+            }
+            await dbContext.Database.MigrateAsync();
+            logger.LogInformation("✅ Database migrations completed successfully!");
         }
         else
         {
-            Console.WriteLine("No pending migrations found.");
+            logger.LogInformation("ℹ️ No pending migrations found.");
         }
-        
-        // Optional: Ensure database is created
-        dbContext.Database.EnsureCreated();
-        
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ An error occurred while applying migrations: {ex.Message}");
-        // Don't throw - let the app start even if migrations fail
+        logger.LogError(ex, "❌ MIGRATION FAILED: An error occurred during database migration");
     }
 }
 
-// Test endpoints to verify API is working
+// Test endpoints
 app.MapGet("/", () => "API Root - Working!");
 app.MapGet("/test", () => "Test endpoint - Working!");
+app.MapGet("/db-test", async (PickeAPIContext dbContext) => 
+{
+    try 
+    {
+        var canConnect = await dbContext.Database.CanConnectAsync();
+        return $"Database test: {(canConnect ? "✅ CONNECTED" : "❌ FAILED")}";
+    }
+    catch (Exception ex)
+    {
+        return $"Database test: ❌ ERROR - {ex.Message}";
+    }
+});
 
 app.MapControllers();
 
