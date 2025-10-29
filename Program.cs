@@ -7,6 +7,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// ✅ ADD CORS - CRITICAL FOR MAUI APP
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowMauiApp", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 Console.WriteLine("🚀 DATABASE SETUP: Starting application...");
@@ -17,9 +28,10 @@ builder.Services.AddDbContext<PickeAPIContext>(options =>
 
 var app = builder.Build();
 
-// 🆕 NEW DATABASE CREATION CODE - REPLACES MIGRATIONS
-using (var scope = app.Services.CreateScope())
+// ✅ FIXED: Proper async database initialization
+async Task InitializeDatabaseAsync()
 {
+    using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
     
@@ -35,13 +47,18 @@ using (var scope = app.Services.CreateScope())
         // Test the Picker table
         var pickerCount = await dbContext.Pickers.CountAsync();
         logger.LogInformation($"📊 Picker table test: {pickerCount} records found");
-        
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "❌ DATABASE CREATION FAILED");
     }
 }
+
+// ✅ Initialize database synchronously for startup
+await InitializeDatabaseAsync();
+
+// ✅ USE CORS - MUST come before other middleware
+app.UseCors("AllowMauiApp");
 
 // Test endpoints
 app.MapGet("/", () => "API Root - Working!");
@@ -69,8 +86,8 @@ app.MapGet("/create-test", async (PickeAPIContext dbContext) =>
             Name = "Test Picker " + DateTime.Now.Ticks, 
             OrchardName = "Test Orchard",
             PackHouse = "Test House",
-            HoursWorked = 8.0m,  // ✅ FIXED: Using decimal value instead of string
-            BinRate = 15.5m      // ✅ FIXED: Using decimal value instead of string
+            HoursWorked = 8.0m,
+            BinRate = 15.5m
         };
         
         dbContext.Pickers.Add(testPicker);
