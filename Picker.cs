@@ -2,6 +2,9 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+
+namespace TheRocksNew.API.Models;
+
 public class Picker
 {
     [Key]

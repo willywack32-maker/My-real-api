@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using TheRocksNew.API.Data;    // For DbContext
+using TheRocksNew.API.Models;  // For Model
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +25,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 Console.WriteLine("🚀 DATABASE SETUP: Starting application...");
 Console.WriteLine($"🔌 Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
 
-builder.Services.AddDbContext<PickeAPIContext>(options =>
+builder.Services.AddDbContext<PickerAPIContext>(options =>
     options.UseNpgsql(connectionString));
 
 var app = builder.Build();
@@ -38,7 +40,7 @@ async Task InitializeDatabaseAsync()
     try
     {
         logger.LogInformation("🆕 CREATING DATABASE TABLES...");
-        var dbContext = services.GetRequiredService<PickeAPIContext>();
+        var dbContext = services.GetRequiredService<PickerAPIContext>();
         
         // This will create the database and tables if they don't exist
         var created = await dbContext.Database.EnsureCreatedAsync();
@@ -64,7 +66,7 @@ app.UseCors("AllowMauiApp");
 app.MapGet("/", () => "API Root - Working!");
 app.MapGet("/test", () => "Test endpoint - Working!");
 
-app.MapGet("/db-test", async (PickeAPIContext dbContext) => 
+app.MapGet("/db-test", async (PickerAPIContext dbContext) => 
 {
     try 
     {
@@ -77,7 +79,7 @@ app.MapGet("/db-test", async (PickeAPIContext dbContext) =>
     }
 });
 
-app.MapGet("/create-test", async (PickeAPIContext dbContext) => 
+app.MapGet("/create-test", async (PickerAPIContext dbContext) => 
 {
     try 
     {

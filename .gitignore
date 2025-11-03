@@ -1,7 +1,10 @@
-bin/
-obj/
-.vs/
-*.user
-*.suo
-*.exe
-*.dll
+**/bin/
+**/obj/
+**/.dockerignore
+**/.git
+**/.gitignore
+**/Dockerfile
+**/README.md
+**/.env
+*.backup
+*.old
