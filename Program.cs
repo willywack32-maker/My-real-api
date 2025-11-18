@@ -104,6 +104,95 @@ app.MapGet("/create-test", async (PickerAPIContext dbContext) =>
     }
 });
 
+// MAIN PAGE ENDPOINTS - for dropdowns and submitting picks
+app.MapGet("/api/pickers/active", async (AppDbContext context) => 
+    await context.Pickers.Where(p => p.IsActive).ToListAsync());
+
+app.MapGet("/api/orchards/active", async (AppDbContext context) => 
+    await context.Orchards.Where(o => o.IsActive).ToListAsync());
+
+app.MapGet("/api/orchard-blocks/active", async (AppDbContext context) => 
+    await context.OrchardBlocks
+        .Include(b => b.Orchard)
+        .Where(b => b.IsActive)
+        .ToListAsync());
+
+app.MapGet("/api/apple-varieties/available", async (AppDbContext context) => 
+    await context.OrchardBlocks
+        .Where(b => b.IsActive && !string.IsNullOrEmpty(b.AppleVariety))
+        .Select(b => b.AppleVariety)
+        .Distinct()
+        .ToListAsync());
+
+app.MapGet("/api/bin-rates/current", async (AppDbContext context) => 
+    await context.ApplePrices
+        .Where(p => p.IsActive)
+        .Select(p => new { p.Variety, p.BinRate })
+        .ToListAsync());
+
+// GET bin rate for a specific variety
+app.MapGet("/api/bin-rates/{variety}", async (AppDbContext context, string variety) =>
+{
+    var price = await context.ApplePrices
+        .FirstOrDefaultAsync(p => p.Variety == variety && p.IsActive);
+    
+    if (price != null)
+    {
+        return Results.Ok(price.BinRate);
+    }
+    
+    // Fallback to block's default rate
+    var block = await context.OrchardBlocks
+        .FirstOrDefaultAsync(b => b.AppleVariety == variety && b.IsActive);
+    
+    return Results.Ok(block?.DefaultBinRate ?? 45.00m);
+});
+
+// SUBMIT PICK FROM MAIN PAGE
+app.MapPost("/api/picks", async (AppDbContext context, PickRecord pick) =>
+{
+    pick.Id = Guid.NewGuid();
+    pick.PickDate = DateTime.UtcNow;
+    
+    context.PickRecords.Add(pick);
+    await context.SaveChangesAsync();
+    
+    // Return the pick with calculated total
+    var result = await context.PickRecords
+        .Include(p => p.Picker)
+        .Include(p => p.OrchardBlock)
+        .ThenInclude(b => b.Orchard)
+        .FirstOrDefaultAsync(p => p.Id == pick.Id);
+        
+    return Results.Created($"/api/picks/{pick.Id}", result);
+});
+
+// ADMIN ENDPOINTS - View all picks
+app.MapGet("/api/admin/pick-records", async (AppDbContext context) => 
+    await context.PickRecords
+        .Include(p => p.Picker)
+        .Include(p => p.OrchardBlock)
+        .ThenInclude(b => b.Orchard)
+        .OrderByDescending(p => p.PickDate)
+        .ToListAsync());
+
+// ADMIN: Get picker earnings summary
+app.MapGet("/api/admin/picker-earnings", async (AppDbContext context) =>
+{
+    var earnings = await context.PickRecords
+        .Include(p => p.Picker)
+        .GroupBy(p => new { p.PickerId, p.Picker.FirstName, p.Picker.LastName })
+        .Select(g => new
+        {
+            PickerName = $"{g.Key.FirstName} {g.Key.LastName}",
+            TotalBins = g.Sum(p => p.BinsPicked),
+            TotalEarnings = g.Sum(p => p.TotalAmount),
+            AverageBinRate = g.Average(p => p.BinRate)
+        })
+        .ToListAsync();
+        
+    return Results.Ok(earnings);
+});
 app.MapControllers();
 
 if (app.Environment.IsDevelopment())
