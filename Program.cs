@@ -20,10 +20,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-Console.WriteLine("🚀 DATABASE SETUP: Starting application...");
-Console.WriteLine($"🔌 Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
+// Database configuration
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+if (!string.IsNullOrEmpty(connectionString))
+{
+    // Supabase uses standard PostgreSQL format, so no conversion needed
+    Console.WriteLine("✅ Using Supabase database");
+}
+else
+{
+    // Fallback to appsettings.json
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+}
 
 builder.Services.AddDbContext<PickerAPIContext>(options =>
     options.UseNpgsql(connectionString));
