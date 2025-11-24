@@ -74,4 +74,3 @@ namespace TheRocksNew.API.Models;
         // Remove navigation properties since they cause issues with JSON serialization
         // These will be handled by the API separately
     }
-}

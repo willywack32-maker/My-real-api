@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TheRocksNew.API.Data;
-using TheRocksNew.ViewModels;
+using TheRocksNew.API.Models;
 
 namespace TheRocksNew.API.Controllers
 {

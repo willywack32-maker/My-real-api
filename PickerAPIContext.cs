@@ -1,14 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TheRocksNew.API.Models;
 
-namespace TheRocksNew.API.Data;
+namespace TheRocksNew.API.Data
 
 {
     public class PickerAPIContext : DbContext
     {
         public PickerAPIContext(DbContextOptions<PickerAPIContext> options) : base(options) { }
 
-        public DbSet<ViewModels.Picker> Pickers { get; set; }
+        public DbSet<Picker> Pickers { get; set; }
         public DbSet<Orchard> Orchards { get; set; }
         public DbSet<OrchardBlock> OrchardBlocks { get; set; }
         public DbSet<ApplePrice> ApplePrices { get; set; }
