@@ -20,9 +20,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-
 // Database configuration
-
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(connectionString))
@@ -47,24 +45,9 @@ builder.Services.AddDbContext<PickerAPIContext>(options =>
             maxRetryDelay: TimeSpan.FromSeconds(5)
         )));
 
-// Helper method to convert Supabase connection string
-static string ConvertSupabaseConnectionString(string supabaseUrl)
-{
-    try
-    {
-        var uri = new Uri(supabaseUrl);
-        var userInfo = uri.UserInfo.Split(':');
-        
-        return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
-    }
-    catch (Exception ex)
-    {
-        throw new ArgumentException($"Invalid Supabase connection string: {supabaseUrl}", ex);
-    }
-}}
+var app = builder.Build();
 
 // ✅ FIXED: Proper async database initialization
-
 async Task InitializeDatabaseAsync()
 {
     using var scope = app.Services.CreateScope();
@@ -92,7 +75,9 @@ async Task InitializeDatabaseAsync()
         logger.LogError(ex, "❌ DATABASE SETUP FAILED");
         // Don't crash the app, just log the error
     }
-}  // ✅ Initialize database synchronously for startup
+}
+
+// ✅ Initialize database synchronously for startup
 await InitializeDatabaseAsync();
 
 // ✅ USE CORS - MUST come before other middleware
@@ -231,3 +216,19 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.Run();
+
+// Helper method to convert Supabase connection string - MUST be at the end
+static string ConvertSupabaseConnectionString(string supabaseUrl)
+{
+    try
+    {
+        var uri = new Uri(supabaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        
+        return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
+    }
+    catch (Exception ex)
+    {
+        throw new ArgumentException($"Invalid Supabase connection string: {supabaseUrl}", ex);
+    }
+}
