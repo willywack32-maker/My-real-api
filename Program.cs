@@ -20,26 +20,51 @@ builder.Services.AddCors(options =>
     });
 });
 
+
 // Database configuration
+
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(connectionString))
 {
-    // Supabase uses standard PostgreSQL format, so no conversion needed
-    Console.WriteLine("✅ Using Supabase database");
+    // Convert Supabase connection string to standard format
+    connectionString = ConvertSupabaseConnectionString(connectionString);
+    Console.WriteLine("✅ Using Supabase database (converted)");
 }
 else
 {
     // Fallback to appsettings.json
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    Console.WriteLine("⚠️ Using fallback connection string");
 }
 
-builder.Services.AddDbContext<PickerAPIContext>(options =>
-    options.UseNpgsql(connectionString));
+Console.WriteLine($"🔌 Database connection: {!string.IsNullOrEmpty(connectionString)}");
 
-var app = builder.Build();
+builder.Services.AddDbContext<PickerAPIContext>(options =>
+    options.UseNpgsql(connectionString, 
+        npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5)
+        )));
+
+// Helper method to convert Supabase connection string
+static string ConvertSupabaseConnectionString(string supabaseUrl)
+{
+    try
+    {
+        var uri = new Uri(supabaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        
+        return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
+    }
+    catch (Exception ex)
+    {
+        throw new ArgumentException($"Invalid Supabase connection string: {supabaseUrl}", ex);
+    }
+}}
 
 // ✅ FIXED: Proper async database initialization
+
 async Task InitializeDatabaseAsync()
 {
     using var scope = app.Services.CreateScope();
@@ -48,24 +73,26 @@ async Task InitializeDatabaseAsync()
     
     try
     {
-        logger.LogInformation("🆕 CREATING DATABASE TABLES...");
+        logger.LogInformation("🆕 ATTEMPTING DATABASE CONNECTION...");
         var dbContext = services.GetRequiredService<PickerAPIContext>();
         
-        // This will create the database and tables if they don't exist
-        var created = await dbContext.Database.EnsureCreatedAsync();
-        logger.LogInformation($"✅ DATABASE CREATION: {(created ? "TABLES CREATED" : "TABLES ALREADY EXIST")}");
+        // Simple connection test first
+        var canConnect = await dbContext.Database.CanConnectAsync();
+        logger.LogInformation($"🔌 Database connection: {(canConnect ? "✅ SUCCESS" : "❌ FAILED")}");
         
-        // Test the Picker table
-        var pickerCount = await dbContext.Pickers.CountAsync();
-        logger.LogInformation($"📊 Picker table test: {pickerCount} records found");
+        if (canConnect)
+        {
+            // Then create tables if needed
+            var created = await dbContext.Database.EnsureCreatedAsync();
+            logger.LogInformation($"📊 Database tables: {(created ? "✅ CREATED" : "✅ ALREADY EXIST")}");
+        }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ DATABASE CREATION FAILED");
+        logger.LogError(ex, "❌ DATABASE SETUP FAILED");
+        // Don't crash the app, just log the error
     }
-}
-
-// ✅ Initialize database synchronously for startup
+}  // ✅ Initialize database synchronously for startup
 await InitializeDatabaseAsync();
 
 // ✅ USE CORS - MUST come before other middleware
