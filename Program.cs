@@ -39,12 +39,7 @@ else
 Console.WriteLine($"🔌 Database connection: {!string.IsNullOrEmpty(connectionString)}");
 
 builder.Services.AddDbContext<PickerAPIContext>(options =>
-    options.UseNpgsql(connectionString, 
-        npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(5)
-        )));
-
+    options.UseNpgsql(connectionString));
 var app = builder.Build();
 
 // ✅ FIXED: Proper async database initialization
