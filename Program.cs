@@ -42,6 +42,21 @@ builder.Services.AddDbContext<PickerAPIContext>(options =>
     options.UseNpgsql(connectionString));
 var app = builder.Build();
 
+// ✅ USE CORS - MUST come before other middleware
+app.UseCors("AllowMauiApp");
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+
+// ✅ CRITICAL FIX: MapControllers must be called after UseAuthorization but before custom endpoints
+app.MapControllers();
+
 // ✅ FIXED: Proper async database initialization
 async Task InitializeDatabaseAsync()
 {
@@ -74,9 +89,6 @@ async Task InitializeDatabaseAsync()
 
 // ✅ Initialize database synchronously for startup
 await InitializeDatabaseAsync();
-
-// ✅ USE CORS - MUST come before other middleware
-app.UseCors("AllowMauiApp");
 
 // Test endpoints
 app.MapGet("/", () => "API Root - Working!");
@@ -198,17 +210,6 @@ app.MapGet("/api/admin/picker-earnings", async (PickerAPIContext context) =>
         
     return Results.Ok(earnings);
 });
-
-app.MapControllers();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
 
 app.Run();
 
