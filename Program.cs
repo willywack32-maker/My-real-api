@@ -40,6 +40,7 @@ Console.WriteLine($"🔌 Database connection: {!string.IsNullOrEmpty(connectionS
 
 builder.Services.AddDbContext<PickerAPIContext>(options =>
     options.UseNpgsql(connectionString));
+    
 var app = builder.Build();
 
 // ✅ USE CORS - MUST come before other middleware
@@ -54,7 +55,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-// ✅ CRITICAL FIX: MapControllers must be called after UseAuthorization but before custom endpoints
+// ✅ FIXED: MapControllers must be here
 app.MapControllers();
 
 // ✅ FIXED: Proper async database initialization
@@ -107,17 +108,16 @@ app.MapGet("/db-test", async (PickerAPIContext dbContext) =>
     }
 });
 
+// ✅ FIXED: Use correct Picker properties that exist in your model
 app.MapGet("/create-test", async (PickerAPIContext dbContext) => 
 {
     try 
     {
         var testPicker = new Picker 
         { 
-            FirstName = "Test",
-            LastName = "Picker",
-            Email = "test@example.com",
-            Phone = "123-456-7890",
-            IsActive = true
+            Name = "Test Picker",           // Changed from FirstName
+            OrchardName = "Test Orchard",   // Keep as is
+            PackHouse = "Test House"        // Keep as is
         };
         
         dbContext.Pickers.Add(testPicker);
@@ -128,7 +128,7 @@ app.MapGet("/create-test", async (PickerAPIContext dbContext) =>
     }
     catch (Exception ex)
     {
-        return $"❌ FAILED: {ex.Message}";
+        return $"❌ FAILED: {ex.Message}\n\nMake sure your Picker model has: Name, OrchardName, PackHouse properties";
     }
 });
 

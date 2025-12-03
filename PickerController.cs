@@ -16,28 +16,52 @@ namespace TheRocksNew.API.Controllers
             _context = context;
         }
 
-        // GET: api/picker/admin/pickers
-        [HttpGet("admin/pickers")]
-        public async Task<ActionResult<IEnumerable<object>>> GetPickers()
+        // GET: api/picker - Health check
+        [HttpGet]
+        public IActionResult Get()
         {
-            // Return empty list for now to get things compiling
-            return Ok(new List<object>());
+            return Ok("Picker API is working!");
         }
 
-        // POST: api/picker/admin/pickers
-        [HttpPost("admin/pickers")]
-        public async Task<ActionResult<object>> CreatePicker(object picker)
+        // GET: api/picker/admin/all - Get all pickers (admin view)
+        [HttpGet("admin/all")]
+        public async Task<ActionResult<IEnumerable<Picker>>> GetAllPickers()
         {
-            // Return simple response for now
-            return Ok(new { message = "Picker created" });
+            return await _context.Pickers.ToListAsync();
         }
 
-        // PUT: api/picker/admin/pickers/{id}/status
-        [HttpPut("admin/pickers/{id}/status")]
-        public async Task<IActionResult> UpdatePickerStatus(string id, [FromBody] bool isActive)
+        // POST: api/picker/admin/create - Create new picker
+        [HttpPost("admin/create")]
+        public async Task<ActionResult<Picker>> CreatePicker(Picker picker)
         {
-            // Return simple response for now
-            return Ok(new { message = "Status updated" });
+            // Set default values
+            picker.IsActive = true;
+            
+            _context.Pickers.Add(picker);
+            await _context.SaveChangesAsync();
+            
+            return CreatedAtAction(nameof(GetAllPickers), new { id = picker.Id }, picker);
+        }
+
+        // PUT: api/picker/admin/{id}/status - Activate/deactivate picker
+        [HttpPut("admin/{id}/status")]
+        public async Task<IActionResult> UpdatePickerStatus(int id, [FromBody] bool isActive)
+        {
+            var picker = await _context.Pickers.FindAsync(id);
+            if (picker == null)
+                return NotFound();
+            
+            picker.IsActive = isActive;
+            await _context.SaveChangesAsync();
+            
+            return NoContent();
+        }
+
+        // GET: api/picker/test - Test endpoint
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            return Ok("Picker test endpoint works!");
         }
     }
 }
