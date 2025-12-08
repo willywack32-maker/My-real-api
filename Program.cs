@@ -1,17 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using TheRocksNew.API.Data;    // For DbContext
-using TheRocksNew.API.Models;  // For Model
-using TheRocksNew.API.Controllers;  // ADD THIS LINE
+using TheRocksNew.API.Data;
+using TheRocksNew.API.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
 builder.Services.AddControllers();
-     
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ ADD CORS - CRITICAL FOR MAUI APP
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowMauiApp", policy =>
@@ -22,18 +19,15 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Database configuration
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(connectionString))
 {
-    // Convert Supabase connection string to standard format
     connectionString = ConvertSupabaseConnectionString(connectionString);
     Console.WriteLine("✅ Using Supabase database (converted)");
 }
 else
 {
-    // Fallback to appsettings.json
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     Console.WriteLine("⚠️ Using fallback connection string");
 }
@@ -45,7 +39,6 @@ builder.Services.AddDbContext<PickerAPIContext>(options =>
     
 var app = builder.Build();
 
-// ✅ USE CORS - MUST come before other middleware
 app.UseCors("AllowMauiApp");
 
 if (app.Environment.IsDevelopment())
@@ -57,10 +50,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-// ✅ FIXED: MapControllers must be here
 app.MapControllers();
 
-// ✅ FIXED: Proper async database initialization
 async Task InitializeDatabaseAsync()
 {
     using var scope = app.Services.CreateScope();
@@ -72,13 +63,11 @@ async Task InitializeDatabaseAsync()
         logger.LogInformation("🆕 ATTEMPTING DATABASE CONNECTION...");
         var dbContext = services.GetRequiredService<PickerAPIContext>();
         
-        // Simple connection test first
         var canConnect = await dbContext.Database.CanConnectAsync();
         logger.LogInformation($"🔌 Database connection: {(canConnect ? "✅ SUCCESS" : "❌ FAILED")}");
         
         if (canConnect)
         {
-            // Then create tables if needed
             var created = await dbContext.Database.EnsureCreatedAsync();
             logger.LogInformation($"📊 Database tables: {(created ? "✅ CREATED" : "✅ ALREADY EXIST")}");
         }
@@ -86,14 +75,11 @@ async Task InitializeDatabaseAsync()
     catch (Exception ex)
     {
         logger.LogError(ex, "❌ DATABASE SETUP FAILED");
-        // Don't crash the app, just log the error
     }
 }
 
-// ✅ Initialize database synchronously for startup
 await InitializeDatabaseAsync();
 
-// Test endpoints
 app.MapGet("/", () => "API Root - Working!");
 app.MapGet("/test", () => "Test endpoint - Working!");
 
@@ -110,36 +96,12 @@ app.MapGet("/db-test", async (PickerAPIContext dbContext) =>
     }
 });
 
-// ✅ FIXED: Use correct Picker properties that exist in your model
-app.MapGet("/create-test", async (PickerAPIContext dbContext) => 
-{
-    try 
-    {
-        var testPicker = new Picker 
-        { 
-            Name = "Test Picker",           // Changed from FirstName
-            OrchardName = "Test Orchard",   // Keep as is
-            Email = "willam@gmail.com",
-            Phone = "0275464876",
-            IsActive = "yes",
-            HireDate = "12.7.25",
-            FullName = " Joss Anderson"
-                 
-        };
-        
-        dbContext.Pickers.Add(testPicker);
-        await dbContext.SaveChangesAsync();
-        
-        var count = await dbContext.Pickers.CountAsync();
-        return $"✅ SUCCESS! Created test picker. Total pickers: {count}";
-    }
-    catch (Exception ex)
-    {
-        return $"❌ FAILED: {ex.Message}\n\nMake sure your Picker model has: Name, OrchardName, PackHouse properties";
-    }
-});
+// COMMENTED OUT - FIX LATER
+// app.MapGet("/create-test", async (PickerAPIContext dbContext) => 
+// {
+//     return "This endpoint is temporarily disabled";
+// });
 
-// MAIN PAGE ENDPOINTS - for dropdowns and submitting picks
 app.MapGet("/api/pickers/active", async (PickerAPIContext context) => 
     await context.Pickers.Where(p => p.IsActive).ToListAsync());
 
@@ -164,7 +126,6 @@ app.MapGet("/api/bin-rates/current", async (PickerAPIContext context) =>
         .Select(p => new { p.Variety, p.BinRate })
         .ToListAsync());
 
-// GET bin rate for a specific variety
 app.MapGet("/api/bin-rates/{variety}", async (PickerAPIContext context, string variety) =>
 {
     var price = await context.ApplePrices
@@ -175,14 +136,12 @@ app.MapGet("/api/bin-rates/{variety}", async (PickerAPIContext context, string v
         return Results.Ok(price.BinRate);
     }
     
-    // Fallback to block's default rate
     var block = await context.OrchardBlocks
         .FirstOrDefaultAsync(b => b.AppleVariety == variety && b.IsActive);
     
     return Results.Ok(block?.DefaultBinRate ?? 45.00m);
 });
 
-// SUBMIT PICK FROM MAIN PAGE
 app.MapPost("/api/picks", async (PickerAPIContext context, PickRecord pick) =>
 {
     pick.Id = Guid.NewGuid();
@@ -191,17 +150,14 @@ app.MapPost("/api/picks", async (PickerAPIContext context, PickRecord pick) =>
     context.PickRecords.Add(pick);
     await context.SaveChangesAsync();
     
-    // Return the pick without navigation properties since they were removed
     return Results.Created($"/api/picks/{pick.Id}", pick);
 });
 
-// ADMIN ENDPOINTS - View all picks
 app.MapGet("/api/admin/pick-records", async (PickerAPIContext context) => 
     await context.PickRecords
         .OrderByDescending(p => p.PickDate)
         .ToListAsync());
 
-// ADMIN: Get picker earnings summary
 app.MapGet("/api/admin/picker-earnings", async (PickerAPIContext context) =>
 {
     var earnings = await context.PickRecords
@@ -220,7 +176,6 @@ app.MapGet("/api/admin/picker-earnings", async (PickerAPIContext context) =>
 
 app.Run();
 
-// Helper method to convert Supabase connection string - MUST be at the end
 static string ConvertSupabaseConnectionString(string supabaseUrl)
 {
     try
