@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using TheRocksNew.API.Data;    // For DbContext
 using TheRocksNew.API.Models;  // For Model
+using TheRocksNew.API.Controllers;  // ADD THIS LINE
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
-builder.Services.AddControllers()
-    .AddApplicationPart(typeof(PickerController).Assembly); 
+builder.Services.AddControllers();
+     
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -118,7 +119,12 @@ app.MapGet("/create-test", async (PickerAPIContext dbContext) =>
         { 
             Name = "Test Picker",           // Changed from FirstName
             OrchardName = "Test Orchard",   // Keep as is
-            PackHouse = "Test House"        // Keep as is
+            Email = "willam@gmail.com",
+            Phone = "0275464876",
+            IsActive = "yes",
+            HireDate = "12.7.25",
+            FullName = " Joss Anderson"
+                 
         };
         
         dbContext.Pickers.Add(testPicker);
