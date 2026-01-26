@@ -9,7 +9,6 @@ namespace TheRocksNew.API.Data
         {
         }
         
-        // Make sure ALL these DbSets exist:
         public DbSet<Picker> Pickers { get; set; }
         public DbSet<Orchard> Orchards { get; set; }
         public DbSet<OrchardBlock> OrchardBlocks { get; set; }
@@ -17,25 +16,7 @@ namespace TheRocksNew.API.Data
         public DbSet<PickRecord> PickRecords { get; set; }
         public DbSet<Packhouse> Packhouses { get; set; }
         
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-            
-            // Configure relationships
-            modelBuilder.Entity<OrchardBlock>()
-                .HasOne(ob => ob.Orchard)
-                .WithMany()
-                .HasForeignKey(ob => ob.OrchardId);
-                
-            modelBuilder.Entity<PickRecord>()
-                .HasOne(pr => pr.Picker)
-                .WithMany()
-                .HasForeignKey(pr => pr.PickerId);
-                
-            modelBuilder.Entity<PickRecord>()
-                .HasOne(pr => pr.OrchardBlock)
-                .WithMany()
-                .HasForeignKey(pr => pr.OrchardBlockId);
-        }
+        // REMOVE OR COMMENT OUT THE OnModelCreating METHOD
+        // Since we don't have navigation properties, we don't need this
     }
 }
