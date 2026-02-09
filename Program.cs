@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TheRocksNew.API.Data;
 using TheRocksNew.API.Models;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -176,7 +177,7 @@ app.MapGet("/api/admin/picker-earnings", async (PickerAPIContext context) =>
 
 app.Run();
 
-static string ConvertSupabaseConnectionString(string supabaseUrl)
+static string? ConvertSupabaseConnectionString(string? supabaseUrl)
 {
     try
     {
@@ -214,7 +215,6 @@ static string ConvertSupabaseConnectionString(string supabaseUrl)
                 Username = username,
                 Password = password,
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
                 Pooling = true,
                 MinPoolSize = 0,
                 MaxPoolSize = 20,
