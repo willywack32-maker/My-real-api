@@ -180,13 +180,63 @@ static string ConvertSupabaseConnectionString(string supabaseUrl)
 {
     try
     {
-        var uri = new Uri(supabaseUrl);
-        var userInfo = uri.UserInfo.Split(':');
+        Console.WriteLine($"🔍 Raw connection string: {supabaseUrl?.Substring(0, Math.Min(supabaseUrl.Length, 100))}...");
         
-        return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
+        if (string.IsNullOrEmpty(supabaseUrl))
+        {
+            Console.WriteLine("❌ Connection string is null or empty");
+            return null;
+        }
+        
+        // Handle both pooler and direct connection strings
+        if (supabaseUrl.StartsWith("postgresql://") || supabaseUrl.StartsWith("postgres://"))
+        {
+            var uri = new Uri(supabaseUrl);
+            var userInfo = uri.UserInfo.Split(':');
+            
+            if (userInfo.Length < 2)
+            {
+                Console.WriteLine($"❌ Invalid user info format: {uri.UserInfo}");
+                return null;
+            }
+            
+            var username = userInfo[0];
+            var password = Uri.UnescapeDataString(userInfo[1]);
+            
+            Console.WriteLine($"✅ Parsed - Host: {uri.Host}, Port: {uri.Port}, User: {username}, DB: {uri.LocalPath.TrimStart('/')}");
+            
+            // Build connection string
+            var builder = new NpgsqlConnectionStringBuilder
+            {
+                Host = uri.Host,
+                Port = uri.Port,
+                Database = uri.LocalPath.TrimStart('/'),
+                Username = username,
+                Password = password,
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true,
+                Pooling = true,
+                MinPoolSize = 0,
+                MaxPoolSize = 20,
+                Timeout = 30,
+                CommandTimeout = 30,
+                TcpKeepAlive = true,
+                KeepAlive = 60
+            };
+            
+            var result = builder.ToString();
+            Console.WriteLine($"✅ Converted successfully");
+            return result;
+        }
+        
+        // Already in Npgsql format
+        Console.WriteLine("ℹ️ Already in Npgsql format");
+        return supabaseUrl;
     }
     catch (Exception ex)
     {
-        throw new ArgumentException($"Invalid Supabase connection string: {supabaseUrl}", ex);
+        Console.WriteLine($"❌ Conversion failed: {ex.Message}");
+        Console.WriteLine($"📋 Stack: {ex.StackTrace}");
+        return null;
     }
 }
