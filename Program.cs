@@ -42,12 +42,12 @@ var app = builder.Build();
 
 app.UseCors("AllowMauiApp");
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Picker API v1");
+    c.RoutePrefix = "swagger"; // Set Swagger at /swagger
+});
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
@@ -69,17 +69,24 @@ async Task InitializeDatabaseAsync()
         
         if (canConnect)
         {
+            // Test a simple query
+            var pickerCount = await dbContext.Pickers.CountAsync();
+            logger.LogInformation($"📊 Found {pickerCount} pickers in database");
+            
             var created = await dbContext.Database.EnsureCreatedAsync();
             logger.LogInformation($"📊 Database tables: {(created ? "✅ CREATED" : "✅ ALREADY EXIST")}");
+        }
+        else
+        {
+            logger.LogError("❌ Cannot connect to database. Check connection string and network settings.");
         }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "❌ DATABASE SETUP FAILED");
     }
-}
 
-await InitializeDatabaseAsync();
+
 
 app.MapGet("/", () => "API Root - Working!");
 app.MapGet("/test", () => "Test endpoint - Working!");
@@ -173,6 +180,68 @@ app.MapGet("/api/admin/picker-earnings", async (PickerAPIContext context) =>
         .ToListAsync();
         
     return Results.Ok(earnings);
+});
+
+app.MapGet("/api/debug/connection", () =>
+{
+    var connString = Environment.GetEnvironmentVariable("DATABASE_URL");
+    var hasConnString = !string.IsNullOrEmpty(connectionString);
+    
+    // Mask password for display
+    string masked = "Not set";
+    if (!string.IsNullOrEmpty(connString))
+    {
+        try
+        {
+            var uri = new Uri(connString);
+            var userInfo = uri.UserInfo;
+            if (userInfo.Contains(':'))
+            {
+                var parts = userInfo.Split(':');
+                masked = connString.Replace(userInfo, $"{parts[0]}:***");
+            }
+        }
+        catch
+        {
+            masked = connString.Length > 50 ? connString.Substring(0, 50) + "..." : connString;
+        }
+    }
+    
+    return new
+    {
+        DATABASE_URL_Set = hasConnString,
+        ConnectionString = masked,
+        Environment = app.Environment.EnvironmentName,
+        ServerTime = DateTime.UtcNow
+    };
+});
+
+app.MapGet("/api/debug/tables", async (PickerAPIContext context) =>
+{
+    try
+    {
+        var pickers = await context.Pickers.CountAsync();
+        var orchards = await context.Orchards.CountAsync();
+        var blocks = await context.OrchardBlocks.CountAsync();
+        var prices = await context.ApplePrices.CountAsync();
+        var records = await context.PickRecords.CountAsync();
+        var packhouses = await context.Packhouses.CountAsync();
+        
+        return Results.Ok(new
+        {
+            Pickers = pickers,
+            Orchards = orchards,
+            OrchardBlocks = blocks,
+            ApplePrices = prices,
+            PickRecords = records,
+            Packhouses = packhouses,
+            TotalTables = 6
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error: {ex.Message}");
+    }
 });
 
 app.Run();
