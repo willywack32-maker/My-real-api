@@ -85,7 +85,7 @@ async Task InitializeDatabaseAsync()
     {
         logger.LogError(ex, "❌ DATABASE SETUP FAILED");
     }
-
+}
 
 
 app.MapGet("/", () => "API Root - Working!");
