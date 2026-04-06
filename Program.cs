@@ -40,6 +40,7 @@ builder.Services.AddDbContext<PickerAPIContext>(options =>
 
 var app = builder.Build();
 
+app.UseDeveloperExceptionPage();
 app.UseCors("AllowMauiApp");
 
 // Always enable Swagger (not just in development)
