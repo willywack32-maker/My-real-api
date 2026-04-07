@@ -199,17 +199,17 @@ namespace TheRocksNew.API.Controllers
         }
 
         [HttpPost("pickrecords")]
-        public async Task<ActionResult<PickRecord>> CreatePickRecord(PickRecord pickRecord)
-        {
-            pickRecord.Id = Guid.NewGuid();
-            pickRecord.PickDate = pickRecord.PickDate.Date;
-            
-            _context.PickRecords.Add(pickRecord);
-            await _context.SaveChangesAsync();
-            
-            return CreatedAtAction(nameof(GetPickRecords), new { id = pickRecord.Id }, pickRecord);
-        }
+public async Task<ActionResult<PickRecord>> CreatePickRecord(PickRecord pickRecord)
+{
+    pickRecord.Id = Guid.NewGuid();
+    pickRecord.PickDate = pickRecord.PickDate.Date;
+    pickRecord.TotalAmount = pickRecord.BinsPicked * pickRecord.BinRate; // ADD THIS LINE
 
+    _context.PickRecords.Add(pickRecord);
+    await _context.SaveChangesAsync();
+
+    return CreatedAtAction(nameof(GetPickRecords), new { id = pickRecord.Id }, pickRecord);
+}
         // =========== PACKHOUSE ENDPOINTS ===========
         
         [HttpGet("packhouses")]
