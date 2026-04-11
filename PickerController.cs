@@ -203,9 +203,8 @@ public async Task<ActionResult<PickRecord>> CreatePickRecord(PickRecord pickReco
 {
     pickRecord.Id = Guid.NewGuid();
     pickRecord.PickDate = pickRecord.PickDate.Date;
-    pickRecord.TotalAmount = pickRecord.BinsPicked * pickRecord.BinRate; // ADD THIS LINE
-
-    _context.PickRecords.Add(pickRecord);
+   
+   _context.PickRecords.Add(pickRecord);
     await _context.SaveChangesAsync();
 
     return CreatedAtAction(nameof(GetPickRecords), new { id = pickRecord.Id }, pickRecord);
