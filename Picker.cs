@@ -29,17 +29,14 @@ public class OrchardBlock
 {
     public Guid Id { get; set; }
     public Guid OrchardId { get; set; }
-    
-       
     public string BlockName { get; set; } = string.Empty;
-    public string BlockNumber { get; set; } = string.Empty;
-    public string AppleVariety { get; set; } = string.Empty;
-    public string RoadNumber { get; set; } = string.Empty;
+    public string? BlockNumber { get; set; }
+    public string? AppleVariety { get; set; }
     public decimal DefaultBinRate { get; set; } = 45.00m;
     public bool IsActive { get; set; } = true;
-    public string FullBlockName => $"{BlockName} {BlockNumber}";
+    
+    // Remove RoadNumber and Area – they are not in the database
 }
-
 public class ApplePrice
 {
     public Guid Id { get; set; }
