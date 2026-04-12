@@ -30,13 +30,9 @@ public class OrchardBlock
     public Guid Id { get; set; }
     public Guid OrchardId { get; set; }
     
-    // ADD THIS NAVIGATION PROPERTY:
-    [JsonIgnore] // This prevents JSON serialization issues
-    public virtual Orchard? Orchard { get; set; }
-    
+       
     public string BlockName { get; set; } = string.Empty;
     public string BlockNumber { get; set; } = string.Empty;
-    public decimal Area { get; set; }
     public string AppleVariety { get; set; } = string.Empty;
     public string RoadNumber { get; set; } = string.Empty;
     public decimal DefaultBinRate { get; set; } = 45.00m;
