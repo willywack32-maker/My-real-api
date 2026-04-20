@@ -197,19 +197,22 @@ namespace TheRocksNew.API.Controllers
                 .OrderByDescending(pr => pr.PickDate)
                 .ToListAsync();
         }
-
-        [HttpPost("pickrecords")]
+[HttpPost("pickrecords")]
 public async Task<ActionResult<PickRecord>> CreatePickRecord(PickRecord pickRecord)
 {
     pickRecord.Id = Guid.NewGuid();
-    pickRecord.PickDate = pickRecord.PickDate.Date;
-   
-   _context.PickRecords.Add(pickRecord);
+    // Ensure the date is UTC
+    if (pickRecord.PickDate.Kind != DateTimeKind.Utc)
+    {
+        pickRecord.PickDate = DateTime.SpecifyKind(pickRecord.PickDate, DateTimeKind.Utc);
+    }
+    pickRecord.TotalAmount = pickRecord.BinsPicked * pickRecord.BinRate;
+
+    _context.PickRecords.Add(pickRecord);
     await _context.SaveChangesAsync();
 
     return CreatedAtAction(nameof(GetPickRecords), new { id = pickRecord.Id }, pickRecord);
-}
-        // =========== PACKHOUSE ENDPOINTS ===========
+}        // =========== PACKHOUSE ENDPOINTS ===========
         
         [HttpGet("packhouses")]
         public async Task<ActionResult<IEnumerable<Packhouse>>> GetPackhouses()
