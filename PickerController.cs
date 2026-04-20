@@ -201,18 +201,23 @@ namespace TheRocksNew.API.Controllers
 public async Task<ActionResult<PickRecord>> CreatePickRecord(PickRecord pickRecord)
 {
     pickRecord.Id = Guid.NewGuid();
-    // Ensure the date is UTC
+    
+    // Ensure the date is UTC (fixes the DateTime error)
     if (pickRecord.PickDate.Kind != DateTimeKind.Utc)
     {
         pickRecord.PickDate = DateTime.SpecifyKind(pickRecord.PickDate, DateTimeKind.Utc);
     }
-    pickRecord.TotalAmount = pickRecord.BinsPicked * pickRecord.BinRate;
+    
+    // DO NOT assign TotalAmount if it's a computed property
+    // pickRecord.TotalAmount = pickRecord.BinsPicked * pickRecord.BinRate; // <-- REMOVE THIS LINE
 
     _context.PickRecords.Add(pickRecord);
     await _context.SaveChangesAsync();
 
     return CreatedAtAction(nameof(GetPickRecords), new { id = pickRecord.Id }, pickRecord);
-}        // =========== PACKHOUSE ENDPOINTS ===========
+}   
+
+   // =========== PACKHOUSE ENDPOINTS ===========
         
         [HttpGet("packhouses")]
         public async Task<ActionResult<IEnumerable<Packhouse>>> GetPackhouses()
