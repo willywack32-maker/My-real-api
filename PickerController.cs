@@ -33,7 +33,7 @@ namespace TheRocksNew.API.Controllers
         {
             picker.Id = Guid.NewGuid();
             picker.IsActive = true;
-            picker.HireDate = DateTime.Today;
+            picker.HireDate = DateTime.UtcNow;
             _context.Pickers.Add(picker);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetAllPickers), new { id = picker.Id }, picker);
@@ -181,6 +181,11 @@ namespace TheRocksNew.API.Controllers
         {
             price.Id = Guid.NewGuid();
             price.IsActive = true;
+
+             // Force UTC for the date
+        if (price.EffectiveDate.Kind != DateTimeKind.Utc)
+        price.EffectiveDate = DateTime.SpecifyKind(price.EffectiveDate, DateTimeKind.Utc);
+
             _context.ApplePrices.Add(price);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetApplePrices), new { id = price.Id }, price);
